@@ -1,0 +1,13 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    volumes:
+      - .:/app
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"
