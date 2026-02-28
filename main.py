@@ -1,9 +1,33 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 import redis
 import uuid
 
 redis_client = redis.Redis(host='redis', port=6379, db=0)
 app = FastAPI()
+
+
+class ConnectionManager:
+    def __init__(self):
+        self.connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.connections.remove(websocket)
+
+    async def broadcast(self, message: str):
+        for connection in self.connections:
+            await connection.send_json(message)
+
+
+manager = ConnectionManager()
+
+
+@app.get("/ws")
+async def websocket_endpoint(websocket: WebSocket, session_id: str):
+    pass
 
 
 @app.get("/pixels")
@@ -41,10 +65,14 @@ def post_pixels(loc_x: int, loc_y: int, colour: str, session_id: str):
 
     # Check the if the user has changed a pixel in the last 30 seconds
     pixel_session = redis_client.get(f'pixel:{session_id}')
+    ttl_session = redis_client.ttl(f'pixel:{session_id}')
     if pixel_session:
         raise HTTPException(
             status_code=429,
-            detail="You can only change one pixel every 30 seconds"
+            detail=(
+                "You can only change one pixel every 30 seconds."
+                f" {ttl_session} seconds remaining."
+            )
         )
 
     # Set the pixel change in redis and set a timeout for the session
