@@ -2,9 +2,6 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 import redis
 import uuid
 
-redis_client = redis.Redis(host='redis', port=6379, db=0)
-app = FastAPI()
-
 
 class ConnectionManager:
     def __init__(self):
@@ -22,7 +19,12 @@ class ConnectionManager:
             await connection.send_json(message)
 
 
+redis_client = redis.Redis(host='redis', port=6379, db=0)
+app = FastAPI()
 manager = ConnectionManager()
+
+CANVAS_WIDTH = 500
+CANVAS_HEIGHT = 500
 
 
 @app.get("/ws")
